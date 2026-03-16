@@ -1,0 +1,158 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id                   String           @id @default(cuid())
+  name                 String?
+  email                String?          @unique
+  emailVerified        DateTime?
+  image                String?
+  role                 String           @default("USER")
+  projectId            String?
+  accounts             Account[]
+  sentMessages         ChatMessage[]    @relation("MessageAuthor")
+  comments             Comment[]
+  conversationsAsUser2 Conversation[]   @relation("User2Conversations")
+  conversationsAsUser1 Conversation[]   @relation("User1Conversations")
+  documents            Document[]
+  likes                Like[]
+  posts                Post[]
+  supervisedProjects   Project[]        @relation("ProjectSupervisor")
+  sessions             Session[]
+  requests             TimeOffRequest[]
+  project              Project?         @relation(fields: [projectId], references: [id])
+  contacts             User[]           @relation("UserContacts")
+  contactedBy          User[]           @relation("UserContacts")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  url       String
+  category  String?  @default("GENERAL")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+}
+
+model Conversation {
+  id        String        @id @default(cuid())
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  user1Id   String
+  user2Id   String
+  messages  ChatMessage[]
+  user2     User          @relation("User2Conversations", fields: [user2Id], references: [id])
+  user1     User          @relation("User1Conversations", fields: [user1Id], references: [id])
+
+  @@unique([user1Id, user2Id])
+}
+
+model ChatMessage {
+  id             String       @id @default(cuid())
+  content        String
+  createdAt      DateTime     @default(now())
+  authorId       String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author         User         @relation("MessageAuthor", fields: [authorId], references: [id])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  createdAt    DateTime @default(now())
+  supervisorId String
+  supervisor   User     @relation("ProjectSupervisor", fields: [supervisorId], references: [id])
+  members      User[]
+}
+
+model TimeOffRequest {
+  id             String   @id @default(cuid())
+  type           String   @default("VACATION") // VACATION, PERMISSION, EARLY_LEAVE
+  startDate      DateTime
+  endDate        DateTime
+  reason         String
+  status         String   @default("PENDING")
+  supervisorNote String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  content   String
+  imageUrl  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  authorId  String
+  comments  Comment[]
+  likes     Like[]
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  authorId  String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([authorId, postId])
+}
